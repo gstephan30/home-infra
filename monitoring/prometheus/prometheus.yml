@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 5s # Alle 5 Sekunden Daten holen (reicht völlig)
+  evaluation_interval: 5s
+
+scrape_configs:
+  # 1. Unser Custom Power Exporter
+  - job_name: 'rapl_power'
+    static_configs:
+      - targets: ['rapl-exporter:8000']
+
+  # 2. Der Standard Linux Exporter (CPU, RAM, Disk)
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    # Filtert unwichtige Filesysteme raus
+    params:
+      collect[]:
+        - cpu
+        - meminfo
+        - diskstats
+        - netdev
+        - loadavg
+        - filesystem

@@ -1,0 +1,57 @@
+services:
+  # --- Visualization ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000" # Erreichbar unter http://server-ip:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # --- Database ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090" # Optional: Kannst du entfernen, wenn du Prometheus nie direkt debuggen willst
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=1y' # Behalte Daten 1 Jahr lang!
+
+  # --- Exporters (Data Collectors) ---
+  
+  # 1. Dein Custom Power Monitor
+  rapl-exporter:
+    build: ./rapl-exporter
+    container_name: rapl_exporter
+    restart: unless-stopped
+    volumes:
+      # WICHTIG: Read-Only Zugriff auf Host-Sensoren
+      - /sys:/host_sys:ro
+    # Kein 'ports', da nur intern erreichbar!
+
+  # 2. Standard Linux Metriken (CPU%, RAM, Disk)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    # Kein 'ports', da nur intern erreichbar!
+
+volumes:
+  grafana_data:
+  prometheus_data:
